@@ -38,6 +38,7 @@
         .badge-pending { background: #f59e0b20; color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .badge-approved { background: #10b98120; color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .badge-banned { background: #ef4444; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-rejected { background: #ef444420; color: #ef4444; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         
         .modal-bg { background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -149,7 +150,7 @@
                     <div class="overflow-x-auto">
                         <table class="data-table">
                             <thead>
-                                <tr><th>Channel</th><th>Email</th><th>Subscribers</th><th>Watch Hours</th><th>Earnings</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+                                <tr><th>Channel</th><th>Email</th><th>Subscribers</th><th>Watch Hours</th><th>Total Earnings</th><th>Pending Withdrawals</th><th>Available Balance</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
                             </thead>
                             <tbody id="usersList"></tbody>
                         </table>
@@ -202,7 +203,12 @@
             <div id="tab-payments" class="tab-content hidden">
                 <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
                     <div class="flex justify-between items-center mb-6"><h2 class="text-xl font-black text-white">💳 Withdrawal Requests</h2><button onclick="exportWithdrawalsCSV()" class="btn-primary text-sm py-2"><i class="fa-solid fa-download mr-1"></i>Export CSV</button></div>
-                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Creator</th><th>Amount</th><th>Payment Method</th><th>Account Details</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead><tbody id="withdrawalRequestsList"></tbody></table></div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead><tr><th>Creator</th><th>Amount</th><th>Payment Method</th><th>Account Details</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody id="withdrawalRequestsList"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -237,7 +243,7 @@
             <div class="space-y-4">
                 <div><label class="text-slate-300 text-sm font-medium block mb-2">Subscribers Count</label><input type="number" id="editSubscribers" class="w-full" min="0"></div>
                 <div><label class="text-slate-300 text-sm font-medium block mb-2">Watch Hours</label><input type="number" id="editWatchHours" class="w-full" min="0" step="0.5"></div>
-                <div><label class="text-slate-300 text-sm font-medium block mb-2">Earnings Override ($)</label><input type="number" id="editEarnings" class="w-full" min="0" step="0.01" placeholder="Leave empty for auto"><p class="text-slate-500 text-xs mt-1">Manually set earnings (overrides auto-calculation)</p></div>
+                <div><label class="text-slate-300 text-sm font-medium block mb-2">Earnings Override ($)</label><input type="number" id="editEarnings" class="w-full" min="0" step="0.01" placeholder="Leave empty for auto"><p class="text-slate-500 text-xs mt-1">Manually set total earnings (overrides auto-calculation)</p></div>
                 <div class="flex gap-3 mt-4">
                     <button onclick="saveMetricsEdit()" class="btn-success flex-1 py-3"><i class="fa-solid fa-save mr-2"></i>Save Changes</button>
                     <button onclick="closeModal('editMetricsModal')" class="btn-secondary flex-1 py-3">Cancel</button>
@@ -322,6 +328,37 @@
         function updateDashboard() { }
 
         // ===== USER MANAGEMENT =====
+        function getUserTotalEarnings(creator) {
+            if (!creator) return 0;
+            const myVideos = allVideos.filter(v => v.creatorId === creator.id);
+            const totalViews = myVideos.reduce((a,v) => a + (v.views || 0), 0);
+            const autoEarnings = (creator.subs >= 1000 && creator.watchHours >= 4000) ? (totalViews * 0.002) : 0;
+            if (creator.earningsOverride !== undefined && creator.earningsOverride !== null) {
+                return creator.earningsOverride;
+            }
+            return autoEarnings;
+        }
+
+        function getTotalPendingWithdrawals(creatorId) {
+            return allWithdrawals
+                .filter(w => w.creatorId === creatorId && w.status === 'pending')
+                .reduce((sum, w) => sum + (w.amount || 0), 0);
+        }
+
+        function getTotalWithdrawnAmount(creatorId) {
+            return allWithdrawals
+                .filter(w => w.creatorId === creatorId && w.status === 'completed')
+                .reduce((sum, w) => sum + (w.amount || 0), 0);
+        }
+
+        function getAvailableBalance(creator) {
+            const total = getUserTotalEarnings(creator);
+            const pending = getTotalPendingWithdrawals(creator.id);
+            const withdrawn = getTotalWithdrawnAmount(creator.id);
+            // Available = total earnings - pending - already withdrawn
+            return Math.max(0, total - pending - withdrawn);
+        }
+
         window.openEditMetricsModal = (userId, channelName, currentSubs, currentHours, currentEarnings) => {
             document.getElementById('editUserId').value = userId;
             document.getElementById('editMetricsChannelName').innerHTML = `Channel: <span class="text-cyan-400">${channelName}</span>`;
@@ -352,7 +389,6 @@
                 if (earningsOverride !== '' && !isNaN(parseFloat(earningsOverride)) && parseFloat(earningsOverride) >= 0) {
                     updateData.earningsOverride = parseFloat(earningsOverride);
                 } else {
-                    // Remove override if field is empty
                     updateData.earningsOverride = null;
                 }
                 await updateDoc(doc(creatorsCol, userId), updateData);
@@ -365,42 +401,69 @@
             }
         };
         
-        function getUserEarnings(creator) {
-            const myVideos = allVideos.filter(v => v.creatorId === creator.id);
-            const totalViews = myVideos.reduce((a,v) => a + (v.views || 0), 0);
-            const autoEarnings = (creator.subs >= 1000 && creator.watchHours >= 4000) ? (totalViews * 0.002) : 0;
-            // If earningsOverride exists and is not null, use it
-            if (creator.earningsOverride !== undefined && creator.earningsOverride !== null) {
-                return creator.earningsOverride;
-            }
-            return autoEarnings;
-        }
-        
         function renderUsers() { 
             const tbody = document.getElementById('usersList'); 
             const searchTerm = document.getElementById('searchUsers')?.value.toLowerCase() || ''; 
             tbody.innerHTML = allCreators.filter(c => c.name?.toLowerCase().includes(searchTerm) || c.email?.toLowerCase().includes(searchTerm)).map(c => {
-                const earnings = getUserEarnings(c);
+                const totalEarnings = getUserTotalEarnings(c);
+                const pending = getTotalPendingWithdrawals(c.id);
+                const available = getAvailableBalance(c);
                 return `<tr>
                     <td><div class="flex items-center gap-2"><img src="${c.dp || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="w-8 h-8 rounded-full"><span class="font-medium">${c.name || 'Unknown'}</span></div></td>
                     <td>${c.email || '-'}</td>
                     <td class="font-bold text-cyan-400">${(c.subs || 0).toLocaleString()}</td>
                     <td class="font-bold text-purple-400">${(c.watchHours || 0).toLocaleString()}</td>
-                    <td class="font-bold text-green-400">$${earnings.toFixed(2)}${c.earningsOverride !== undefined && c.earningsOverride !== null ? ' *' : ''}</td>
+                    <td class="font-bold text-green-400">$${totalEarnings.toFixed(2)}${c.earningsOverride !== undefined && c.earningsOverride !== null ? ' *' : ''}</td>
+                    <td class="font-bold text-yellow-400">$${pending.toFixed(2)}</td>
+                    <td class="font-bold text-blue-400">$${available.toFixed(2)}</td>
                     <td>${bannedUsers.has(c.id) ? '<span class="badge-banned">Banned</span>' : '<span class="badge-approved">Active</span>'}</td>
                     <td class="text-sm">${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
                     <td><div class="flex gap-2 flex-wrap">
-                        <button onclick="openEditMetricsModal('${c.id}', '${c.name}', ${c.subs || 0}, ${c.watchHours || 0}, ${earnings})" class="btn-secondary text-xs px-3 py-1"><i class="fa-solid fa-pen mr-1"></i>Edit</button>
+                        <button onclick="openEditMetricsModal('${c.id}', '${c.name}', ${c.subs || 0}, ${c.watchHours || 0}, ${totalEarnings})" class="btn-secondary text-xs px-3 py-1"><i class="fa-solid fa-pen mr-1"></i>Edit</button>
                         ${bannedUsers.has(c.id) ? `<button onclick="unbanUser('${c.id}')" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-check mr-1"></i>Unban</button>` : `<button onclick="openBanModal('${c.id}')" class="btn-warning text-xs px-3 py-1"><i class="fa-solid fa-ban mr-1"></i>Ban</button>`}
                         <button onclick="deleteUser('${c.id}')" class="btn-danger text-xs px-3 py-1"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
                     </div></td>
                 </tr>`;
-            }).join('') || '<tr><td colspan="8" class="text-center text-slate-400 py-8">No users found</td></tr>'; 
+            }).join('') || '<tr><td colspan="10" class="text-center text-slate-400 py-8">No users found</td></tr>'; 
         }
         
         function renderVideos() { const tbody = document.getElementById('videosList'); const searchTerm = document.getElementById('searchVideos')?.value.toLowerCase() || ''; tbody.innerHTML = allVideos.filter(v => v.title?.toLowerCase().includes(searchTerm)).map(v => { const creator = allCreators.find(c => c.id === v.creatorId); return `<tr><td><img src="${v.thumb}" class="w-12 h-8 object-cover rounded"></td><td class="font-medium max-w-[200px] truncate">${v.title}</td><td>${creator?.name || 'Unknown'}</td><td>${v.views || 0}</td><td>${v.likes?.length || 0}</td><td>${v.comments?.length || 0}</td><td class="text-sm">${new Date(v.createdAt).toLocaleDateString()}</td><td><div class="flex gap-2"><button onclick="featureVideo('${v.id}')" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-star mr-1"></i>Feature</button><button onclick="deleteVideo('${v.id}')" class="btn-danger text-xs px-3 py-1"><i class="fa-solid fa-trash mr-1"></i>Delete</button></div></td></tr>`; }).join('') || '<tr><td colspan="8" class="text-center text-slate-400 py-8">No videos found</td></tr>'; }
         
-        function renderWithdrawals() { const tbody = document.getElementById('withdrawalRequestsList'); tbody.innerHTML = allWithdrawals.filter(w => w.status === 'pending').map(w => { const creator = allCreators.find(c => c.id === w.creatorId); let methodDetail = ''; if(w.paymentMethod?.type === 'easypaisa') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; else if(w.paymentMethod?.type === 'jazzcash') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; else methodDetail = `${w.paymentMethod?.bankName} - ${w.paymentMethod?.accountNumber}`; return `<tr><td><span class="font-medium">${creator?.name || 'Unknown'}</span></td><td class="font-bold text-green-400">$${w.amount}</td><td>${w.paymentMethod?.type === 'easypaisa' ? 'EasyPaisa' : w.paymentMethod?.type === 'jazzcash' ? 'JazzCash' : 'Bank'}</td><td class="text-sm">${methodDetail}</td><td class="text-sm">${new Date(w.createdAt).toLocaleDateString()}</td><td><span class="badge-pending">Pending</span></td><td><button onclick="markAsPaid('${w.id}', '${w.creatorId}', ${w.amount})" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-check mr-1"></i>Mark Paid</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-8">No pending withdrawal requests</td></tr>'; }
+        function renderWithdrawals() { 
+            const tbody = document.getElementById('withdrawalRequestsList'); 
+            tbody.innerHTML = allWithdrawals.map(w => { 
+                const creator = allCreators.find(c => c.id === w.creatorId); 
+                let methodDetail = ''; 
+                if(w.paymentMethod?.type === 'easypaisa') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; 
+                else if(w.paymentMethod?.type === 'jazzcash') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; 
+                else methodDetail = `${w.paymentMethod?.bankName} - ${w.paymentMethod?.accountNumber}`;
+                
+                let statusBadge = '';
+                if(w.status === 'pending') statusBadge = '<span class="badge-pending">Pending</span>';
+                else if(w.status === 'completed') statusBadge = '<span class="badge-approved">Completed</span>';
+                else if(w.status === 'rejected') statusBadge = '<span class="badge-rejected">Rejected</span>';
+                
+                let actions = '';
+                if(w.status === 'pending') {
+                    actions = `
+                        <button onclick="approveWithdrawal('${w.id}', '${w.creatorId}', ${w.amount})" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-check mr-1"></i>Approve</button>
+                        <button onclick="rejectWithdrawal('${w.id}')" class="btn-danger text-xs px-3 py-1"><i class="fa-solid fa-times mr-1"></i>Reject</button>
+                    `;
+                } else {
+                    actions = '<span class="text-slate-500 text-xs">Processed</span>';
+                }
+                
+                return `<tr>
+                    <td><span class="font-medium">${creator?.name || 'Unknown'}</span></td>
+                    <td class="font-bold text-green-400">$${w.amount}</td>
+                    <td>${w.paymentMethod?.type === 'easypaisa' ? 'EasyPaisa' : w.paymentMethod?.type === 'jazzcash' ? 'JazzCash' : 'Bank'}</td>
+                    <td class="text-sm">${methodDetail}</td>
+                    <td class="text-sm">${new Date(w.createdAt).toLocaleDateString()}</td>
+                    <td>${statusBadge}</td>
+                    <td><div class="flex gap-2 flex-wrap">${actions}</div></td>
+                </tr>`; 
+            }).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-8">No withdrawal requests</td></tr>'; 
+        }
         
         function renderMonetization() { const tbody = document.getElementById('monetizationRequestsList'); tbody.innerHTML = allMonetization.filter(m => m.status === 'pending').map(m => { const creator = allCreators.find(c => c.id === m.creatorId); const subs = m.subscribers || creator?.subs || 0; const hours = m.watchHours || creator?.watchHours || 0; const isEligible = subs >= 1000 && hours >= 4000; return `<tr><td><span class="font-medium">${creator?.name || 'Unknown'}</span></td><td>${subs} ${subs>=1000 ? '✓' : ''}</td><td>${hours} ${hours>=4000 ? '✓' : ''}</td><td class="text-sm">${new Date(m.requestedAt).toLocaleDateString()}</td><td><span class="badge-pending">Pending</span></td><td><div class="flex gap-2"><button onclick="approveMonetization('${m.id}', '${m.creatorId}')" class="btn-success text-xs px-3 py-1" ${!isEligible ? 'disabled' : ''}>Approve</button><button onclick="rejectMonetization('${m.id}')" class="btn-danger text-xs px-3 py-1">Reject</button></div></td></tr>`; }).join('') || '<tr><td colspan="6" class="text-center text-slate-400 py-8">No pending requests</td></tr>'; }
         
@@ -421,9 +484,39 @@
         window.openBanModal = (userId) => { document.getElementById('banUserId').value = userId; document.getElementById('banUserModal').classList.remove('hidden'); };
         window.confirmBanUser = () => { const userId = document.getElementById('banUserId').value; const duration = document.getElementById('banDuration').value; const reason = document.getElementById('banReason').value; if(reason) { banUser(userId, duration, reason); closeModal('banUserModal'); document.getElementById('banReason').value = ''; } else alert('Please provide a reason for ban'); };
         
+        // WITHDRAWAL APPROVE / REJECT
+        window.approveWithdrawal = async (requestId, creatorId, amount) => {
+            if(confirm(`Approve withdrawal of $${amount}?`)) {
+                await updateDoc(doc(withdrawalCol, requestId), { 
+                    status: 'completed', 
+                    processedAt: new Date().toISOString(),
+                    processedBy: 'admin'
+                });
+                alert(`✅ Withdrawal of $${amount} approved!`);
+                renderWithdrawals();
+                renderUsers();
+                updateStats();
+            }
+        };
+        
+        window.rejectWithdrawal = async (requestId) => {
+            const reason = prompt('Reason for rejection:');
+            if(reason !== null) {
+                await updateDoc(doc(withdrawalCol, requestId), { 
+                    status: 'rejected', 
+                    rejectedAt: new Date().toISOString(),
+                    rejectionReason: reason,
+                    processedBy: 'admin'
+                });
+                alert('❌ Withdrawal rejected!');
+                renderWithdrawals();
+                renderUsers();
+                updateStats();
+            }
+        };
+        
         window.approveMonetization = async (reqId, creatorId) => { await updateDoc(doc(monetizationCol, reqId), { status: 'approved', approvedAt: new Date().toISOString() }); alert('Creator approved for monetization!'); };
         window.rejectMonetization = async (reqId) => { const reason = prompt('Reason for rejection:'); if(reason) await updateDoc(doc(monetizationCol, reqId), { status: 'rejected', reason, rejectedAt: new Date().toISOString() }); };
-        window.markAsPaid = async (requestId, creatorId, amount) => { await updateDoc(doc(withdrawalCol, requestId), { status: 'completed', processedAt: new Date().toISOString() }); alert(`$${amount} marked as paid!`); };
         
         window.updateGlobalCPM = async () => { const cpm = parseFloat(document.getElementById('cpmRate').value); await setDoc(doc(settingsCol, 'global'), { cpm, updatedAt: new Date().toISOString() }, { merge: true }); alert(`CPM updated to $${cpm}`); };
         window.toggleMaintenanceMode = async () => { const isEnabled = document.getElementById('maintenanceToggle').checked; await setDoc(doc(settingsCol, 'global'), { maintenanceMode: isEnabled, updatedAt: new Date().toISOString() }, { merge: true }); alert(isEnabled ? 'Maintenance mode ENABLED' : 'Maintenance mode DISABLED'); };
@@ -459,8 +552,17 @@
             alert('Banner ad added!');
         };
         
-        window.exportUsersCSV = () => { let csv = "Name,Email,Subscribers,Watch Hours,Earnings,Status,Joined\n"; allCreators.forEach(c => { const earnings = getUserEarnings(c); csv += `"${c.name || ''}","${c.email || ''}",${c.subs || 0},${c.watchHours || 0},${earnings.toFixed(2)},${bannedUsers.has(c.id) ? 'Banned' : 'Active'},"${c.createdAt || ''}"\n`; }); downloadCSV(csv, 'users_export.csv'); };
-        window.exportWithdrawalsCSV = () => { let csv = "Creator,Amount,Method,Status,Requested\n"; allWithdrawals.forEach(w => { const creator = allCreators.find(c => c.id === w.creatorId); csv += `"${creator?.name || 'Unknown'}",${w.amount},${w.paymentMethod?.type || 'N/A'},${w.status},"${w.createdAt}"\n`; }); downloadCSV(csv, 'withdrawals_export.csv'); };
+        window.exportUsersCSV = () => { 
+            let csv = "Name,Email,Subscribers,Watch Hours,Total Earnings,Pending Withdrawals,Available Balance,Status,Joined\n"; 
+            allCreators.forEach(c => { 
+                const totalEarnings = getUserTotalEarnings(c);
+                const pending = getTotalPendingWithdrawals(c.id);
+                const available = getAvailableBalance(c);
+                csv += `"${c.name || ''}","${c.email || ''}",${c.subs || 0},${c.watchHours || 0},${totalEarnings.toFixed(2)},${pending.toFixed(2)},${available.toFixed(2)},${bannedUsers.has(c.id) ? 'Banned' : 'Active'},"${c.createdAt || ''}"\n`; 
+            }); 
+            downloadCSV(csv, 'users_export.csv'); 
+        };
+        window.exportWithdrawalsCSV = () => { let csv = "Creator,Amount,Method,Status,Requested,Processed\n"; allWithdrawals.forEach(w => { const creator = allCreators.find(c => c.id === w.creatorId); csv += `"${creator?.name || 'Unknown'}",${w.amount},${w.paymentMethod?.type || 'N/A'},${w.status},"${w.createdAt}","${w.processedAt || w.rejectedAt || ''}"\n`; }); downloadCSV(csv, 'withdrawals_export.csv'); };
         function downloadCSV(csv, filename) { const blob = new Blob([csv], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); }
         
         window.filterUsers = () => renderUsers(); window.filterVideos = () => renderVideos();
