@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>OpenView | Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #0a0e27; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1f3a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #06b6d4; border-radius: 10px; }
+        
+        .neon-border { box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
+        .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #0a0e27 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); border-color: #06b6d4; box-shadow: 0 10px 40px rgba(6,182,212,0.1); }
+        
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 14px; background: #1e293b; color: #06b6d4; font-weight: 600; font-size: 13px; }
+        .data-table td { padding: 14px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-size: 13px; }
+        .data-table tr:hover { background: #1e293b; }
+        
+        .stat-card { background: #1e293b; border-radius: 24px; padding: 24px; border: 1px solid #334155; transition: all 0.3s; }
+        .stat-card:hover { border-color: #06b6d4; }
+        
+        .btn-primary { background: linear-gradient(135deg, #06b6d4, #0891b2); color: white; padding: 8px 24px; border-radius: 40px; font-weight: 600; transition: all 0.2s; cursor: pointer; }
+        .btn-primary:hover { transform: scale(1.02); box-shadow: 0 0 20px rgba(6,182,212,0.4); }
+        .btn-success { background: #10b981; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-danger { background: #ef4444; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-warning { background: #f59e0b; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .btn-secondary { background: #475569; color: white; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; }
+        
+        .badge-pending { background: #f59e0b20; color: #f59e0b; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-approved { background: #10b98120; color: #10b981; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .badge-banned { background: #ef4444; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        
+        .modal-bg { background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        
+        .tab-btn { padding: 12px 24px; background: transparent; color: #94a3b8; font-weight: 600; border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; }
+        .tab-btn.active { color: #06b6d4; border-bottom-color: #06b6d4; }
+        
+        input, select, textarea { background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 12px; color: white; outline: none; transition: all 0.2s; }
+        input:focus, select:focus { border-color: #06b6d4; box-shadow: 0 0 0 2px rgba(6,182,212,0.2); }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center gradient-bg">
+        <div class="bg-[#1e293b] rounded-3xl p-8 w-full max-w-md neon-border animate-fade-in">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-shield-hooded text-5xl text-cyan-400 mb-3"></i>
+                <h2 class="text-2xl font-black text-white">Admin Portal</h2>
+                <p class="text-slate-400 text-sm mt-1">Enter Master PIN to access dashboard</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" id="adminPin" placeholder="Enter 6-digit PIN" maxlength="6" class="w-full text-center text-xl tracking-widest">
+                <button onclick="verifyPin()" class="w-full btn-primary py-3 text-lg">Access Dashboard</button>
+            </div>
+            <p class="text-center text-slate-500 text-xs mt-6">🔒 Secure Admin Access • OpenView</p>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD -->
+    <div id="dashboardScreen" class="hidden min-h-screen gradient-bg">
+        
+        <!-- Header -->
+        <header class="bg-[#1e293b]/90 backdrop-blur-md border-b border-cyan-500/20 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-tv text-cyan-400 text-2xl"></i>
+                    <h1 class="text-xl font-black text-white">OpenView <span class="text-cyan-400">Admin Panel</span></h1>
+                    <span class="bg-cyan-500/20 text-cyan-400 text-xs px-3 py-1 rounded-full">v3.0</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 bg-[#0f172a] px-4 py-2 rounded-full">
+                        <i class="fa-solid fa-circle text-green-500 text-xs"></i>
+                        <span class="text-slate-300 text-sm">Secure Session</span>
+                    </div>
+                    <button onclick="logout()" class="text-slate-400 hover:text-red-400 transition px-3 py-2 rounded-lg hover:bg-red-500/10">
+                        <i class="fa-solid fa-right-from-bracket text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <main class="max-w-7xl mx-auto px-6 py-8">
+            
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-5 mb-8">
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Total Users</p><p id="statUsers" class="text-3xl font-black text-white mt-1">0</p></div><i class="fa-solid fa-users text-cyan-400 text-3xl opacity-50"></i></div></div>
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Total Videos</p><p id="statVideos" class="text-3xl font-black text-white mt-1">0</p></div><i class="fa-solid fa-video text-cyan-400 text-3xl opacity-50"></i></div></div>
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Approved Creators</p><p id="statApproved" class="text-3xl font-black text-white mt-1">0</p></div><i class="fa-solid fa-badge-check text-green-400 text-3xl opacity-50"></i></div></div>
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Pending Withdrawals</p><p id="statPendingWithdrawals" class="text-3xl font-black text-white mt-1">0</p></div><i class="fa-solid fa-clock text-yellow-400 text-3xl opacity-50"></i></div></div>
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Pending Monetization</p><p id="statPendingMonetization" class="text-3xl font-black text-white mt-1">0</p></div><i class="fa-solid fa-chart-line text-cyan-400 text-3xl opacity-50"></i></div></div>
+                <div class="stat-card card-hover"><div class="flex justify-between items-start"><div><p class="text-slate-400 text-sm">Total Earnings</p><p id="statEarnings" class="text-3xl font-black text-green-400 mt-1">$0</p></div><i class="fa-solid fa-dollar-sign text-green-400 text-3xl opacity-50"></i></div></div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex flex-wrap gap-1 border-b border-cyan-500/20 mb-8 overflow-x-auto pb-1">
+                <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+                <button class="tab-btn" onclick="switchTab('users')">👥 User Management</button>
+                <button class="tab-btn" onclick="switchTab('videos')">🎬 Video Management</button>
+                <button class="tab-btn" onclick="switchTab('ads')">📺 Ad Management</button>
+                <button class="tab-btn" onclick="switchTab('monetization')">💰 Monetization Desk</button>
+                <button class="tab-btn" onclick="switchTab('payments')">💳 Payments Desk</button>
+                <button class="tab-btn" onclick="switchTab('settings')">⚙️ Site Settings</button>
+            </div>
+
+            <!-- ========== DASHBOARD TAB ========== -->
+            <div id="tab-dashboard" class="tab-content">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-black text-white mb-4">📈 Platform Overview</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Total Views All Videos</span><span id="totalViewsAll" class="font-bold text-white">0</span></div>
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Total Likes</span><span id="totalLikesAll" class="font-bold text-white">0</span></div>
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Total Comments</span><span id="totalCommentsAll" class="font-bold text-white">0</span></div>
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Banned Users</span><span id="bannedUsersCount" class="font-bold text-red-400">0</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                        <h3 class="text-lg font-black text-white mb-4">💰 Revenue Summary</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Current CPM Rate</span><span id="currentCPM" class="font-bold text-cyan-400">$0.002</span></div>
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Total Paid Out</span><span id="totalPaidOut" class="font-bold text-green-400">$0</span></div>
+                            <div class="flex justify-between py-2 border-b border-slate-700"><span class="text-slate-400">Pending Payouts</span><span id="pendingPayouts" class="font-bold text-yellow-400">$0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== USER MANAGEMENT TAB ========== -->
+            <div id="tab-users" class="tab-content hidden">
+                <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+                        <div><h2 class="text-xl font-black text-white">👥 All Users</h2><p class="text-slate-400 text-sm">Manage, ban, unban, delete, or edit metrics of users</p></div>
+                        <div class="flex gap-2"><input type="text" id="searchUsers" placeholder="Search by name or email..." class="w-64 text-sm" onkeyup="filterUsers()"><button onclick="exportUsersCSV()" class="btn-primary text-sm py-2"><i class="fa-solid fa-download mr-1"></i>Export</button></div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Channel</th><th>Email</th><th>Subscribers</th><th>Watch Hours</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="usersList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== VIDEO MANAGEMENT TAB ========== -->
+            <div id="tab-videos" class="tab-content hidden">
+                <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+                        <div><h2 class="text-xl font-black text-white">🎬 All Videos</h2><p class="text-slate-400 text-sm">Delete or feature videos</p></div>
+                        <input type="text" id="searchVideos" placeholder="Search videos..." class="w-64 text-sm" onkeyup="filterVideos()">
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="data-table">
+                            <thead><tr><th>Thumb</th><th>Title</th><th>Creator</th><th>Views</th><th>Likes</th><th>Comments</th><th>Uploaded</th><th>Actions</th></tr></thead>
+                            <tbody id="videosList"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== AD MANAGEMENT TAB ========== -->
+            <div id="tab-ads" class="tab-content hidden">
+                <div class="bg-[#1e293b] rounded-2xl p-6 mb-6 border border-cyan-500/20">
+                    <div class="flex justify-between items-center mb-6"><div><h2 class="text-xl font-black text-white">🎬 Video Ads (In-Stream)</h2><p class="text-slate-400 text-sm">Play before, during, or after videos</p></div><button onclick="openVideoAdModal()" class="btn-primary"><i class="fa-solid fa-plus mr-2"></i>Add Video Ad</button></div>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Title</th><th>Position</th><th>Destination URL</th><th>Status</th><th>Actions</th></tr></thead><tbody id="videoAdsList"></tbody></table></div>
+                </div>
+                <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <div class="flex justify-between items-center mb-6"><div><h2 class="text-xl font-black text-white">🖼️ Banner Ads</h2><p class="text-slate-400 text-sm">Horizontal banners on home page</p></div><button onclick="openBannerAdModal()" class="btn-primary"><i class="fa-solid fa-plus mr-2"></i>Add Banner Ad</button></div>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Image</th><th>Title</th><th>Destination URL</th><th>Position</th><th>Actions</th></tr></thead><tbody id="bannerAdsList"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- ========== MONETIZATION DESK TAB ========== -->
+            <div id="tab-monetization" class="tab-content hidden">
+                <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <h2 class="text-xl font-black text-white mb-4">💰 Monetization Requests</h2>
+                    <p class="text-slate-400 text-sm mb-6">Review creators who meet 1000+ subscribers & 4000+ watch hours</p>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Channel</th><th>Subscribers</th><th>Watch Hours</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead><tbody id="monetizationRequestsList"></tbody></table></div>
+                </div>
+                <div class="mt-6 bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <h2 class="text-xl font-black text-white mb-4">✅ Approved Monetized Creators</h2>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Channel</th><th>Subscribers</th><th>Approved On</th></tr></thead><tbody id="approvedCreatorsList"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- ========== PAYMENTS DESK TAB ========== -->
+            <div id="tab-payments" class="tab-content hidden">
+                <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                    <div class="flex justify-between items-center mb-6"><h2 class="text-xl font-black text-white">💳 Withdrawal Requests</h2><button onclick="exportWithdrawalsCSV()" class="btn-primary text-sm py-2"><i class="fa-solid fa-download mr-1"></i>Export CSV</button></div>
+                    <div class="overflow-x-auto"><table class="data-table"><thead><tr><th>Creator</th><th>Amount</th><th>Payment Method</th><th>Account Details</th><th>Requested</th><th>Status</th><th>Actions</th></tr></thead><tbody id="withdrawalRequestsList"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- ========== SITE SETTINGS TAB ========== -->
+            <div id="tab-settings" class="tab-content hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                        <h2 class="text-xl font-black text-white mb-4">💵 Monetization Settings</h2>
+                        <div class="space-y-4"><div><label class="text-slate-300 text-sm font-medium block mb-2">Global CPM Rate ($ per 1000 views)</label><input type="number" id="cpmRate" step="0.001" class="w-full"><p class="text-slate-500 text-xs mt-1">Current rate: Affects creator earnings calculation</p></div><button onclick="updateGlobalCPM()" class="btn-primary w-full">Update CPM Rate</button></div>
+                    </div>
+                    <div class="bg-[#1e293b] rounded-2xl p-6 border border-cyan-500/20">
+                        <h2 class="text-xl font-black text-white mb-4">🔧 Site Maintenance</h2>
+                        <div class="space-y-4"><div class="flex items-center justify-between p-4 bg-[#0f172a] rounded-xl"><div><p class="font-bold text-white">Maintenance Mode</p><p class="text-slate-400 text-xs">When enabled, only admins can access</p></div><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="maintenanceToggle" class="sr-only peer" onchange="toggleMaintenanceMode()"><div class="w-11 h-6 bg-slate-700 rounded-full peer peer-checked:bg-cyan-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
+                        <div><label class="text-slate-300 text-sm font-medium block mb-2">Site Announcement Banner</label><textarea id="announcementText" rows="2" placeholder="Enter announcement text..." class="w-full"></textarea><button onclick="updateAnnouncement()" class="btn-primary w-full mt-3">Save Announcement</button></div></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="banUserModal" class="fixed inset-0 z-[200] modal-bg hidden items-center justify-center p-4"><div class="bg-[#1e293b] rounded-3xl p-6 w-full max-w-md border border-cyan-500/30 animate-fade-in"><h3 class="text-xl font-black text-white mb-4">Ban User</h3><input type="text" id="banUserId" hidden><div class="space-y-4"><select id="banDuration" class="w-full"><option value="permanent">Permanent Ban</option><option value="7">7 Days</option><option value="30">30 Days</option><option value="90">90 Days</option></select><textarea id="banReason" placeholder="Reason for ban..." rows="3" class="w-full"></textarea><div class="flex gap-3"><button onclick="confirmBanUser()" class="btn-danger flex-1 py-3">Ban User</button><button onclick="closeModal('banUserModal')" class="btn-primary flex-1 py-3 bg-slate-700">Cancel</button></div></div></div></div>
+
+    <!-- Edit Metrics Modal - NEW FEATURE -->
+    <div id="editMetricsModal" class="fixed inset-0 z-[200] modal-bg hidden items-center justify-center p-4">
+        <div class="bg-[#1e293b] rounded-3xl p-6 w-full max-w-md border border-cyan-500/30 animate-fade-in">
+            <h3 class="text-xl font-black text-white mb-4">✏️ Edit Channel Metrics</h3>
+            <p class="text-slate-400 text-sm mb-4" id="editMetricsChannelName">Channel: </p>
+            <input type="text" id="editUserId" hidden>
+            <div class="space-y-4">
+                <div><label class="text-slate-300 text-sm font-medium block mb-2">Subscribers Count</label><input type="number" id="editSubscribers" class="w-full" min="0"></div>
+                <div><label class="text-slate-300 text-sm font-medium block mb-2">Watch Hours</label><input type="number" id="editWatchHours" class="w-full" min="0" step="0.5"></div>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="saveMetricsEdit()" class="btn-success flex-1 py-3"><i class="fa-solid fa-save mr-2"></i>Save Changes</button>
+                    <button onclick="closeModal('editMetricsModal')" class="btn-secondary flex-1 py-3">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="videoAdModal" class="fixed inset-0 z-[200] modal-bg hidden items-center justify-center p-4"><div class="bg-[#1e293b] rounded-3xl p-6 w-full max-w-md border border-cyan-500/30 animate-fade-in"><h3 class="text-xl font-black text-white mb-4">Add Video Ad</h3><div class="space-y-4"><input type="text" id="videoAdTitle" placeholder="Ad Title"><select id="videoAdPosition"><option value="start">At Start</option><option value="middle">In Middle (50%)</option><option value="end">At End</option></select><input type="url" id="videoAdUrl" placeholder="Destination URL"><input type="file" id="videoAdFile" accept="video/*"><div id="videoAdProgress" class="hidden"><div class="h-1 bg-cyan-500 rounded-full transition-all" style="width:0%"></div><p class="text-xs text-slate-400 mt-1">Uploading...</p></div><button onclick="saveVideoAd()" class="btn-primary w-full">Save Ad</button></div></div></div>
+
+    <div id="bannerAdModal" class="fixed inset-0 z-[200] modal-bg hidden items-center justify-center p-4"><div class="bg-[#1e293b] rounded-3xl p-6 w-full max-w-md border border-cyan-500/30 animate-fade-in"><h3 class="text-xl font-black text-white mb-4">Add Banner Ad</h3><div class="space-y-4"><input type="text" id="bannerAdTitle" placeholder="Banner Title"><input type="url" id="bannerAdUrl" placeholder="Destination URL"><input type="number" id="bannerAdPosition" placeholder="Position (after every X videos)" value="4"><input type="file" id="bannerAdImage" accept="image/*"><div id="bannerAdProgress" class="hidden"><div class="h-1 bg-cyan-500 rounded-full transition-all" style="width:0%"></div><p class="text-xs text-slate-400 mt-1">Uploading...</p></div><button onclick="saveBannerAd()" class="btn-primary w-full">Save Banner</button></div></div></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBSLsjTHjsHKqIU-bA5PQgsydqM0ByySNs",
+            authDomain: "expertly-new.firebaseapp.com",
+            projectId: "expertly-new",
+            storageBucket: "expertly-new.firebasestorage.app",
+            appId: "1:504810923898:web:479c242ddf03a0d107d8c3"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const appId = 'openview';
+        
+        const creatorsCol = collection(db, 'artifacts', appId, 'public', 'data', 'creators');
+        const videosCol = collection(db, 'artifacts', appId, 'public', 'data', 'videos');
+        const withdrawalCol = collection(db, 'artifacts', appId, 'public', 'data', 'withdrawalRequests');
+        const monetizationCol = collection(db, 'artifacts', appId, 'public', 'data', 'monetizationRequests');
+        const videoAdsCol = collection(db, 'artifacts', appId, 'public', 'data', 'videoAds');
+        const bannerAdsCol = collection(db, 'artifacts', appId, 'public', 'data', 'bannerAds');
+        const settingsCol = collection(db, 'artifacts', appId, 'public', 'data', 'adminSettings');
+
+        let allCreators = [], allVideos = [], allWithdrawals = [], allMonetization = [], allVideoAds = [], allBannerAds = [];
+        let bannedUsers = new Set();
+
+        window.verifyPin = () => { const pin = document.getElementById('adminPin').value; if(pin === '626277') { localStorage.setItem('adminAuth', 'true'); localStorage.setItem('adminAuthExpiry', Date.now() + 5*60*60*1000); document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('dashboardScreen').classList.remove('hidden'); loadAllData(); } else { alert('Invalid PIN!'); } };
+        
+        function checkAuth() { const auth = localStorage.getItem('adminAuth'); const expiry = localStorage.getItem('adminAuthExpiry'); if(auth === 'true' && expiry && Date.now() < parseInt(expiry)) { document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('dashboardScreen').classList.remove('hidden'); loadAllData(); } else { localStorage.removeItem('adminAuth'); document.getElementById('loginScreen').classList.remove('hidden'); } }
+        
+        window.logout = () => { localStorage.removeItem('adminAuth'); location.reload(); };
+        
+        async function loadAllData() {
+            onSnapshot(creatorsCol, async (snap) => { allCreators = snap.docs.map(d => ({ id: d.id, ...d.data() })); await loadBannedUsers(); updateStats(); renderUsers(); renderMonetization(); renderApprovedCreators(); updateDashboard(); });
+            onSnapshot(videosCol, (snap) => { allVideos = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateStats(); renderVideos(); updateDashboard(); });
+            onSnapshot(withdrawalCol, (snap) => { allWithdrawals = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateStats(); renderWithdrawals(); updateDashboard(); });
+            onSnapshot(monetizationCol, (snap) => { allMonetization = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateStats(); renderMonetization(); });
+            onSnapshot(videoAdsCol, (snap) => { allVideoAds = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderVideoAds(); });
+            onSnapshot(bannerAdsCol, (snap) => { allBannerAds = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderBannerAds(); });
+            
+            const settingsSnap = await getDocs(settingsCol);
+            settingsSnap.forEach(doc => { if(doc.id === 'global') { document.getElementById('cpmRate').value = doc.data().cpm || 0.002; document.getElementById('maintenanceToggle').checked = doc.data().maintenanceMode || false; document.getElementById('announcementText').value = doc.data().announcement || ''; document.getElementById('currentCPM').innerText = `$${doc.data().cpm || 0.002}`; } });
+        }
+        
+        async function loadBannedUsers() { const bannedSnap = await getDocs(query(creatorsCol, where("banned", "==", true))); bannedUsers.clear(); bannedSnap.forEach(d => bannedUsers.add(d.id)); }
+        
+        function updateStats() { 
+            document.getElementById('statUsers').innerText = allCreators.length;
+            document.getElementById('statVideos').innerText = allVideos.length;
+            document.getElementById('statApproved').innerText = allMonetization.filter(m => m.status === 'approved').length;
+            document.getElementById('statPendingWithdrawals').innerText = allWithdrawals.filter(w => w.status === 'pending').length;
+            document.getElementById('statPendingMonetization').innerText = allMonetization.filter(m => m.status === 'pending').length;
+            document.getElementById('bannedUsersCount').innerText = bannedUsers.size;
+            
+            const totalViews = allVideos.reduce((a,v) => a + (v.views || 0), 0);
+            const totalEarnings = totalViews * 0.002;
+            document.getElementById('statEarnings').innerText = `$${totalEarnings.toFixed(2)}`;
+            document.getElementById('totalViewsAll').innerText = totalViews.toLocaleString();
+            document.getElementById('totalLikesAll').innerText = allVideos.reduce((a,v) => a + (v.likes?.length || 0), 0);
+            document.getElementById('totalCommentsAll').innerText = allVideos.reduce((a,v) => a + (v.comments?.length || 0), 0);
+            
+            const paidOut = allWithdrawals.filter(w => w.status === 'completed').reduce((a,w) => a + (w.amount || 0), 0);
+            const pendingPayouts = allWithdrawals.filter(w => w.status === 'pending').reduce((a,w) => a + (w.amount || 0), 0);
+            document.getElementById('totalPaidOut').innerText = `$${paidOut.toFixed(2)}`;
+            document.getElementById('pendingPayouts').innerText = `$${pendingPayouts.toFixed(2)}`;
+        }
+        
+        function updateDashboard() { }
+        
+        // NEW FUNCTION: Open Edit Metrics Modal
+        window.openEditMetricsModal = (userId, channelName, currentSubs, currentHours) => {
+            document.getElementById('editUserId').value = userId;
+            document.getElementById('editMetricsChannelName').innerHTML = `Channel: <span class="text-cyan-400">${channelName}</span>`;
+            document.getElementById('editSubscribers').value = currentSubs;
+            document.getElementById('editWatchHours').value = currentHours;
+            document.getElementById('editMetricsModal').classList.remove('hidden');
+        };
+        
+        // NEW FUNCTION: Save Edited Metrics
+        window.saveMetricsEdit = async () => {
+            const userId = document.getElementById('editUserId').value;
+            const newSubs = parseInt(document.getElementById('editSubscribers').value) || 0;
+            const newHours = parseFloat(document.getElementById('editWatchHours').value) || 0;
+            
+            if (newSubs < 0 || newHours < 0) {
+                alert('Values cannot be negative!');
+                return;
+            }
+            
+            try {
+                await updateDoc(doc(creatorsCol, userId), {
+                    subs: newSubs,
+                    watchHours: newHours,
+                    metricsLastEditedBy: 'admin',
+                    metricsLastEditedAt: new Date().toISOString()
+                });
+                alert('✅ Channel metrics updated successfully!');
+                closeModal('editMetricsModal');
+                renderUsers(); // Refresh the list
+            } catch (error) {
+                console.error('Error updating metrics:', error);
+                alert('Error updating metrics. Please try again.');
+            }
+        };
+        
+        function renderUsers() { 
+            const tbody = document.getElementById('usersList'); 
+            const searchTerm = document.getElementById('searchUsers')?.value.toLowerCase() || ''; 
+            tbody.innerHTML = allCreators.filter(c => c.name?.toLowerCase().includes(searchTerm) || c.email?.toLowerCase().includes(searchTerm)).map(c => `
+                <tr>
+                    <td><div class="flex items-center gap-2"><img src="${c.dp || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="w-8 h-8 rounded-full"><span class="font-medium">${c.name || 'Unknown'}</span></div></td>
+                    <td>${c.email || '-'}</td>
+                    <td class="font-bold text-cyan-400">${(c.subs || 0).toLocaleString()}</td>
+                    <td class="font-bold text-purple-400">${(c.watchHours || 0).toLocaleString()}</td>
+                    <td>${bannedUsers.has(c.id) ? '<span class="badge-banned">Banned</span>' : '<span class="badge-approved">Active</span>'}</td>
+                    <td class="text-sm">${c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '-'}</td>
+                    <td><div class="flex gap-2 flex-wrap">
+                        <button onclick="openEditMetricsModal('${c.id}', '${c.name}', ${c.subs || 0}, ${c.watchHours || 0})" class="btn-secondary text-xs px-3 py-1"><i class="fa-solid fa-pen mr-1"></i>Edit Metrics</button>
+                        ${bannedUsers.has(c.id) ? `<button onclick="unbanUser('${c.id}')" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-check mr-1"></i>Unban</button>` : `<button onclick="openBanModal('${c.id}')" class="btn-warning text-xs px-3 py-1"><i class="fa-solid fa-ban mr-1"></i>Ban</button>`}
+                        <button onclick="deleteUser('${c.id}')" class="btn-danger text-xs px-3 py-1"><i class="fa-solid fa-trash mr-1"></i>Delete</button>
+                    </div></td>
+                </tr>
+            `).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-8">No users found</td></tr>'; 
+        }
+        
+        function renderVideos() { const tbody = document.getElementById('videosList'); const searchTerm = document.getElementById('searchVideos')?.value.toLowerCase() || ''; tbody.innerHTML = allVideos.filter(v => v.title?.toLowerCase().includes(searchTerm)).map(v => { const creator = allCreators.find(c => c.id === v.creatorId); return `<tr><td><img src="${v.thumb}" class="w-12 h-8 object-cover rounded"></td><td class="font-medium max-w-[200px] truncate">${v.title}</td><td>${creator?.name || 'Unknown'}</td><td>${v.views || 0}</td><td>${v.likes?.length || 0}</td><td>${v.comments?.length || 0}</td><td class="text-sm">${new Date(v.createdAt).toLocaleDateString()}</td><td><div class="flex gap-2"><button onclick="featureVideo('${v.id}')" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-star mr-1"></i>Feature</button><button onclick="deleteVideo('${v.id}')" class="btn-danger text-xs px-3 py-1"><i class="fa-solid fa-trash mr-1"></i>Delete</button></div></td></tr>`; }).join('') || '<tr><td colspan="8" class="text-center text-slate-400 py-8">No videos found</td></tr>'; }
+        
+        function renderWithdrawals() { const tbody = document.getElementById('withdrawalRequestsList'); tbody.innerHTML = allWithdrawals.filter(w => w.status === 'pending').map(w => { const creator = allCreators.find(c => c.id === w.creatorId); let methodDetail = ''; if(w.paymentMethod?.type === 'easypaisa') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; else if(w.paymentMethod?.type === 'jazzcash') methodDetail = `${w.paymentMethod.number} (${w.paymentMethod.name})`; else methodDetail = `${w.paymentMethod?.bankName} - ${w.paymentMethod?.accountNumber}`; return `<tr><td><span class="font-medium">${creator?.name || 'Unknown'}</span></td><td class="font-bold text-green-400">$${w.amount}</td><td>${w.paymentMethod?.type === 'easypaisa' ? 'EasyPaisa' : w.paymentMethod?.type === 'jazzcash' ? 'JazzCash' : 'Bank'}</td><td class="text-sm">${methodDetail}</td><td class="text-sm">${new Date(w.createdAt).toLocaleDateString()}</td><td><span class="badge-pending">Pending</span></td><td><button onclick="markAsPaid('${w.id}', '${w.creatorId}', ${w.amount})" class="btn-success text-xs px-3 py-1"><i class="fa-solid fa-check mr-1"></i>Mark Paid</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="text-center text-slate-400 py-8">No pending withdrawal requests</td></tr>'; }
+        
+        function renderMonetization() { const tbody = document.getElementById('monetizationRequestsList'); tbody.innerHTML = allMonetization.filter(m => m.status === 'pending').map(m => { const creator = allCreators.find(c => c.id === m.creatorId); const subs = m.subscribers || creator?.subs || 0; const hours = m.watchHours || creator?.watchHours || 0; const isEligible = subs >= 1000 && hours >= 4000; return `<tr><td><span class="font-medium">${creator?.name || 'Unknown'}</span></td><td>${subs} ${subs>=1000 ? '✓' : ''}</td><td>${hours} ${hours>=4000 ? '✓' : ''}</td><td class="text-sm">${new Date(m.requestedAt).toLocaleDateString()}</td><td><span class="badge-pending">Pending</span></td><td><div class="flex gap-2"><button onclick="approveMonetization('${m.id}', '${m.creatorId}')" class="btn-success text-xs px-3 py-1" ${!isEligible ? 'disabled' : ''}>Approve</button><button onclick="rejectMonetization('${m.id}')" class="btn-danger text-xs px-3 py-1">Reject</button></div></td></tr>`; }).join('') || '<tr><td colspan="6" class="text-center text-slate-400 py-8">No pending requests</td></tr>'; }
+        
+        function renderApprovedCreators() { const tbody = document.getElementById('approvedCreatorsList'); const approved = allMonetization.filter(m => m.status === 'approved'); tbody.innerHTML = approved.map(m => { const creator = allCreators.find(c => c.id === m.creatorId); return `<tr><td><span class="font-medium">${creator?.name || 'Unknown'}</span></td><td>${creator?.subs || 0}</td><td class="text-sm">${new Date(m.approvedAt).toLocaleDateString()}</td></tr>`; }).join('') || '<tr><td colspan="3" class="text-center text-slate-400 py-8">No approved creators</td></tr>'; }
+        
+        function renderVideoAds() { const tbody = document.getElementById('videoAdsList'); tbody.innerHTML = allVideoAds.map(ad => `<tr><td>${ad.title}</td><td><span class="badge-pending">${ad.position}</span></td><td class="text-sm truncate max-w-[200px]">${ad.destinationUrl}</td><td><span class="badge-approved">Active</span></td><td><button onclick="deleteVideoAd('${ad.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button></td></tr>`).join(''); }
+        function renderBannerAds() { const tbody = document.getElementById('bannerAdsList'); tbody.innerHTML = allBannerAds.map(ad => `<tr><td><img src="${ad.imageUrl}" class="w-16 h-12 object-cover rounded"></td><td>${ad.title}</td><td class="text-sm truncate max-w-[200px]">${ad.destinationUrl}</td><td>After every ${ad.position} videos</td><td><button onclick="deleteBannerAd('${ad.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button></td></tr>`).join(''); }
+        
+        window.deleteUser = async (userId) => { if(confirm('Delete user permanently? All their videos will also be deleted.')) { const userVideos = allVideos.filter(v => v.creatorId === userId); for(let v of userVideos) await deleteDoc(doc(videosCol, v.id)); await deleteDoc(doc(creatorsCol, userId)); alert('User deleted successfully!'); } };
+        window.deleteVideo = async (videoId) => { if(confirm('Delete this video?')) await deleteDoc(doc(videosCol, videoId)); };
+        window.featureVideo = async (videoId) => { await updateDoc(doc(videosCol, videoId), { featured: true }); alert('Video featured on homepage!'); };
+        window.deleteVideoAd = async (id) => { await deleteDoc(doc(videoAdsCol, id)); };
+        window.deleteBannerAd = async (id) => { await deleteDoc(doc(bannerAdsCol, id)); };
+        
+        window.banUser = async (userId, duration, reason) => { await updateDoc(doc(creatorsCol, userId), { banned: true, banReason: reason, banExpiry: duration !== 'permanent' ? new Date(Date.now() + parseInt(duration)*24*60*60*1000).toISOString() : null, bannedAt: new Date().toISOString() }); alert(`User banned${duration !== 'permanent' ? ` for ${duration} days` : ''}`); };
+        window.unbanUser = async (userId) => { await updateDoc(doc(creatorsCol, userId), { banned: false, banReason: null, banExpiry: null }); alert('User unbanned successfully!'); };
+        
+        window.openBanModal = (userId) => { document.getElementById('banUserId').value = userId; document.getElementById('banUserModal').classList.remove('hidden'); };
+        window.confirmBanUser = () => { const userId = document.getElementById('banUserId').value; const duration = document.getElementById('banDuration').value; const reason = document.getElementById('banReason').value; if(reason) { banUser(userId, duration, reason); closeModal('banUserModal'); document.getElementById('banReason').value = ''; } else alert('Please provide a reason for ban'); };
+        
+        window.approveMonetization = async (reqId, creatorId) => { await updateDoc(doc(monetizationCol, reqId), { status: 'approved', approvedAt: new Date().toISOString() }); alert('Creator approved for monetization!'); };
+        window.rejectMonetization = async (reqId) => { const reason = prompt('Reason for rejection:'); if(reason) await updateDoc(doc(monetizationCol, reqId), { status: 'rejected', reason, rejectedAt: new Date().toISOString() }); };
+        window.markAsPaid = async (requestId, creatorId, amount) => { await updateDoc(doc(withdrawalCol, requestId), { status: 'completed', processedAt: new Date().toISOString() }); alert(`$${amount} marked as paid!`); };
+        
+        window.updateGlobalCPM = async () => { const cpm = parseFloat(document.getElementById('cpmRate').value); await setDoc(doc(settingsCol, 'global'), { cpm, updatedAt: new Date().toISOString() }, { merge: true }); alert(`CPM updated to $${cpm}`); };
+        window.toggleMaintenanceMode = async () => { const isEnabled = document.getElementById('maintenanceToggle').checked; await setDoc(doc(settingsCol, 'global'), { maintenanceMode: isEnabled, updatedAt: new Date().toISOString() }, { merge: true }); alert(isEnabled ? 'Maintenance mode ENABLED' : 'Maintenance mode DISABLED'); };
+        window.updateAnnouncement = async () => { const text = document.getElementById('announcementText').value; await setDoc(doc(settingsCol, 'global'), { announcement: text, updatedAt: new Date().toISOString() }, { merge: true }); alert('Announcement saved!'); };
+        
+        window.saveVideoAd = async () => { const title=document.getElementById('videoAdTitle').value, position=document.getElementById('videoAdPosition').value, url=document.getElementById('videoAdUrl').value, file=document.getElementById('videoAdFile').files[0]; if(!title||!url){alert('Fill required fields');return;} let videoUrl=''; if(file){ const formData=new FormData(); formData.append('file',file); formData.append('upload_preset','openview'); const res=await fetch('https://api.cloudinary.com/v1_1/dmikqzfuu/auto/upload',{method:'POST',body:formData}); const data=await res.json(); videoUrl=data.secure_url; } await addDoc(videoAdsCol,{title,position,destinationUrl:url,adUrl:videoUrl,createdAt:new Date().toISOString()}); closeModal('videoAdModal'); alert('Video ad added!'); };
+        
+        window.saveBannerAd = async () => { const title=document.getElementById('bannerAdTitle').value, url=document.getElementById('bannerAdUrl').value, position=parseInt(document.getElementById('bannerAdPosition').value), file=document.getElementById('bannerAdImage').files[0]; if(!title||!url||!file){alert('Fill all fields');return;} const formData=new FormData(); formData.append('file',file); formData.append('upload_preset','openview'); const res=await fetch('https://api.cloudinary.com/v1_1/dmikqzfuu/auto/upload',{method:'POST',body:formData}); const data=await res.json(); await addDoc(bannerAdsCol,{title,destinationUrl:url,imageUrl:data.secure_url,position:position||4,createdAt:new Date().toISOString()}); closeModal('bannerAdModal'); alert('Banner ad added!'); };
+        
+        window.exportUsersCSV = () => { let csv = "Name,Email,Subscribers,Watch Hours,Status,Joined\n"; allCreators.forEach(c => { csv += `"${c.name || ''}","${c.email || ''}",${c.subs || 0},${c.watchHours || 0},${bannedUsers.has(c.id) ? 'Banned' : 'Active'},"${c.createdAt || ''}"\n`; }); downloadCSV(csv, 'users_export.csv'); };
+        window.exportWithdrawalsCSV = () => { let csv = "Creator,Amount,Method,Status,Requested\n"; allWithdrawals.forEach(w => { const creator = allCreators.find(c => c.id === w.creatorId); csv += `"${creator?.name || 'Unknown'}",${w.amount},${w.paymentMethod?.type || 'N/A'},${w.status},"${w.createdAt}"\n`; }); downloadCSV(csv, 'withdrawals_export.csv'); };
+        function downloadCSV(csv, filename) { const blob = new Blob([csv], { type: 'text/csv' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); }
+        
+        window.filterUsers = () => renderUsers(); window.filterVideos = () => renderVideos();
+        window.switchTab = (tab) => { document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden')); document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tab-${tab}`).classList.remove('hidden'); event.target.classList.add('active'); };
+        window.openVideoAdModal = () => { document.getElementById('videoAdModal').classList.remove('hidden'); document.getElementById('videoAdTitle').value=''; document.getElementById('videoAdPosition').value='start'; document.getElementById('videoAdUrl').value=''; document.getElementById('videoAdFile').value=''; };
+        window.openBannerAdModal = () => { document.getElementById('bannerAdModal').classList.remove('hidden'); };
+        window.closeModal = (id) => { document.getElementById(id).classList.add('hidden'); };
+        
+        checkAuth();
+    </script>
+</body>
+</html>
